@@ -90,7 +90,7 @@ def fill_games():
                 ("bill billson", "2000-10-11", "kirik193@yandex.ru"),
                 ("Tom Tomasson", "2001-06-04", "kirik193@yandex.ru"),
                 ("Corey Taylor", "2002-10-11", "kirtrishin@gmail.com"),
-                ("Who Whoser", "1800-06-05", "kirtrishin@gmail.com"),
+                ("Who Whoser", "1800-06-17", "kirtrishin@gmail.com"),
                 )
         for name in names:
             add_new_person(conn, name)
