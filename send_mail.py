@@ -1,4 +1,4 @@
-#coding utf-8
+# -*- coding: utf-8 -*-
 
 import win32com.client as win32
 import psutil
@@ -6,15 +6,25 @@ import os
 import subprocess
 import logging
 import xlrd
+import logging
 import schedule
 
 from time import sleep
 from random import randint
 from datetime import datetime
 
-import logging
-
 logging.basicConfig(filename="errors.log", level=logging.INFO)
+
+row_name = 0
+row_mail = 1
+row_date = 2
+row_header = 3
+row_body = 4
+
+messages = [
+"Прими самые добрые и искренние поздравления по случаю твоего дня рождения!\nС особой теплотой хотим сказать, что гордимся и дорожим сложившимися отношениями теплого сотрудничества и взаимопонимания.\nОт всей души желаем тебе крепкого здоровья, счастья, успехов в работе.\nПусть удача сопутствуют тебе и твои близким",
+'This email alert is auto generated. Please do not respond'
+]
 
 def excel_birthdays(file_name):
     wb = xlrd.open_workbook(file_name)
@@ -31,56 +41,48 @@ def excel_birthdays(file_name):
                     flag = 1
                     break
                 try:
-                    birthday = datetime(*xlrd.xldate_as_tuple(excel_row[num + 2], wb.datemode)).strftime("%Y-%m-%d")
+                    birthday = datetime(*xlrd.xldate_as_tuple(excel_row[num + 2], wb.datemode)).strftime("%m-%d")
                 except:
                     print("error date format in {}, {} row, {} cell. Must be dd.mm.yyyy (например 21.06.1990)".format(file_name, rownum, num + 3))
                     break
-                today_date = datetime.today().strftime("%Y-%m-%d")
+                today_date = datetime.today().strftime("%m-%d")
                 if birthday == today_date:
                     list_of_adresses.append(excel_row[num:])
                 break
     return (list_of_adresses)
 
 
-
-def mail_go_go(email_address, reciever_name, copy_addresses, copy_names, time_send, *args):
+def mail_go_go(birthday_data, time_send, friends):
 
     outlook = win32.Dispatch("Outlook.Application")
 
-    mails = []
-    names = []
-    if len(args) > 1:
-        mails = args[0]
-        names = args[1]
-    footer = ""
-    for mail, name in zip(mails, names):
-        footer += name + " (" + mail + ")\n"
-    if footer != "":
-        footer = "\n\n\nС уважением, \n" + footer
+    mails = friends[0]
+    names = friends[1]
+    print(mails, names)
+    #footer = ""
+    #for mail, name in zip(mails, names):
+    #    footer += name + " (" + mail + ")\n"
+
     try:
         mail = outlook.CreateItem(0)
-        mail.To = email_address
-        mail.CC = copy_addresses
+        mail.To = birthday_data[0]
+        mail.CC = ";".join(mails)
         mail.Subject = 'С Днем Рождения!'
-        messages = [
-        "Прими самые добрые и искренние поздравления по случаю твоего дня рождения!\nС особой теплотой хотим сказать, что гордимся и дорожим сложившимися отношениями теплого сотрудничества и взаимопонимания.\nОт всей души желаем тебе крепкого здоровья, счастья, успехов в работе.\nПусть удача сопутствуют тебе и твои близким",
-        'This email alert is auto generated. Please do not respond'
-        ]
-        header = "Мы, " + copy_names + " поздравляем тебя с Днем Рождения!\n" if len(copy_names) > 1 else ""
-        mail.body = header + messages[randint(0, 1)] + footer
+        #header = "Мы, " + copy_names + " поздравляем тебя с Днем Рождения!\n" if len(copy_names) > 1 else ""
+        mail.body = birthday_data[2] + "\n" + birthday_data[3]
         mail.send
-        logging.info(u"   {}: Send message to {}, copy for {}".format(time_send, email_address, copy_addresses))
+        logging.info(u"   {}: Send message to {}, copy for {}".format(time_send, birthday_data[0], ",".join(mails)))
     except Exception as e:
-        logging.error(u"   {}: Error {}, while tried send message to {}".format(time_send, e, email_address))
+        logging.error(u"   {}: Error {}, while tried send message to {}".format(time_send, e, birthday_data[0]))
 
 
-def get_mails_and_names(birthday_boy, time_send, birthday_name, birthday_mail):
+def get_friends_mails_and_names(birthday_boy, time_send, birthday_name, birthday_mail):
 
     friends_names = []
     friends_mails = []
     birthday_boy_size = len(birthday_boy)
   
-    for friend_id in range(3, birthday_boy_size, 2):
+    for friend_id in range(row_body + 1, birthday_boy_size, 2):
 
         if friend_id + 1 > birthday_boy_size:
             logging.error("   {}: Error {}, именинник {} {}".format(time_send, "неверные данные у {}".format(birthday_boy[friend_id]), birthday_mail, birthday_name))
@@ -92,33 +94,43 @@ def get_mails_and_names(birthday_boy, time_send, birthday_name, birthday_mail):
         friends_mails.append(birthday_boy[friend_id + 1])
 
     send_friends_names = friends_names[0]
-    if len(friends_names) > 1:
-        send_friends_names = ", ".join(friends_names[0:-1]) + " и " + friends_names[-1]
+    #if len(friends_names) > 1:
+    #    send_friends_names = ", ".join(friends_names[0:-1]) + " и " + friends_names[-1]
 
-    return ';'.join(friends_mails), send_friends_names, friends_mails, friends_names
+    return friends_mails, friends_names
 
 
 # Drafting and sending email notification to senders. You can add other senders' email in the list
-def send_notification():
+def generate_email():
 
-    birthdays_today = excel_birthdays("ДР_ДСР.xlsx")
+    birthdays_today = excel_birthdays("поздр от ДСР.xlsx")
 
-    time_send = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+    time_send = datetime.now().strftime("%m-%d %H:%M:%S")
     for birthday_boy in birthdays_today:
-        birthday_name = birthday_boy[0]
-        birthday_mail = birthday_boy[1]
+        birthday_name = birthday_boy[row_name]
+        birthday_mail = birthday_boy[row_mail]
 
-        send_friends_mails, send_friends_names, friends_mails, friends_names = get_mails_and_names(birthday_boy, time_send, birthday_name, birthday_mail)
+        text_header = "Поздравляем тебя с днем рождения!" if birthday_boy[row_header] == "" else (birthday_boy[row_header] + ",")
+        text_body = messages[randint(0, 1)] if birthday_boy[row_body] == "" else birthday_boy[row_body]
+        
+        birthday_data = [birthday_mail, birthday_name, text_header, text_body]
+        
+        friends_mails, friends_names = get_friends_mails_and_names(birthday_boy, time_send, birthday_name, birthday_mail)
+    
+        friends = [friends_mails, friends_names]
 
-        mail_go_go(birthday_mail, birthday_name, send_friends_mails, send_friends_names, time_send, friends_mails, friends_names)
+        mail_go_go(birthday_data, time_send, friends)
 
 
 # Open Outlook.exe. Path may vary according to system config
 # Please check the path to .exe file and update below
 
 def open_outlook():
-    subprocess.call([r'C:\Program Files (x86)\Microsoft Office\Office16\OUTLOOK.exe'])
+    os.chdir('C:/Program Files (x86)/Microsoft Office/Office16')
+    print(os.getcwd())
+    print(os.system('OUTLOOK.exe'))
+    print(1111)
+    #subprocess.call(['OUTLOOK.exe'])
 
 
 def check_opened():
@@ -130,13 +142,12 @@ def check_opened():
     return 0
 
 def start_process():
-    if (check_opened() == 1):
-        send_notification()
+    if (check_opened()):
+        generate_email()
     else:
         open_outlook()
-        #sleep(5)
-        send_notification()
-
+        print("Started")
+        #generate_email()
 
 
 alarm_time = "11:00"
@@ -146,8 +157,13 @@ schedule.every().day.at(alarm_time).do(start_process)
 check_hour = alarm_time.split(':')[0]
 check_min = alarm_time.split(':')[1]
 
-if int(datetime.now().strftime("%H")) > int(check_hour) and int(datetime.now().strftime("%M")) > int(check_min):
-    start_process()
+if int(datetime.now().strftime("%H")) >= int(check_hour) and int(datetime.now().strftime("%M")) > int(check_min):
+    try:
+        start_process()
+    except:
+        sleep(10)
+        start_process
+
 while 1:
     try:
         schedule.run_pending()
