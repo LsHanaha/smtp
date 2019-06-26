@@ -1,5 +1,5 @@
 import xlrd
-import datetime
+from datetime import datetime
 
 def excel_birthdays(file_name):
     wb = xlrd.open_workbook(file_name)
@@ -16,11 +16,11 @@ def excel_birthdays(file_name):
                     flag = 1
                     break
                 try:
-                    birthday = datetime.datetime(*xlrd.xldate_as_tuple(excel_row[num + 2], wb.datemode)).strftime("%Y-%m-%d")
+                    birthday = datetime(*xlrd.xldate_as_tuple(excel_row[num + 2], wb.datemode)).strftime("%Y-%m-%d")
                 except:
                     print("error date format in {}, {} row, {} cell. Must be dd.mm.yyyy (например 21.06.1990)".format(file_name, rownum, num + 3))
                     break
-                today_date = datetime.datetime.today().strftime("%Y-%m-%d")
+                today_date = datetime.today().strftime("%Y-%m-%d")
                 if birthday == today_date:
                     list_of_adresses.append(excel_row[num:])
                 break
