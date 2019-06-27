@@ -13,6 +13,8 @@ from time import sleep
 from random import randint
 from datetime import datetime
 
+send_email_today = 0
+
 logging.basicConfig(filename="errors.log", level=logging.INFO)
 
 row_name = 0
@@ -24,8 +26,9 @@ row_body = 4
 messages = [
 "Прими самые добрые и искренние поздравления по случаю твоего дня рождения!\nС особой теплотой хотим сказать, что гордимся и дорожим сложившимися отношениями теплого сотрудничества и взаимопонимания.\nОт всей души желаем тебе крепкого здоровья, счастья, успехов в работе.\nПусть удача сопутствуют тебе и твои близким",
 
-'This email alert is auto generated. Please do not respond'
+'Пусть и на работе, и в семье тебе сопутствует успех и благополучие. Желаем успешного осуществления всех твоих благих начинаний, а еще — оставаться таким же профессионалом своего дела и просто замечательным человеком!\nПусть удача сопутствуют тебе и твои близким'
 ]
+
 
 def excel_birthdays(file_name):
     wb = xlrd.open_workbook(file_name)
@@ -44,7 +47,7 @@ def excel_birthdays(file_name):
                 try:
                     birthday = datetime(*xlrd.xldate_as_tuple(excel_row[num + 2], wb.datemode)).strftime("%m-%d")
                 except:
-                    print("error date format in {}, {} row, {} cell. Must be dd.mm.yyyy (например 21.06.1990)".format(file_name, rownum, num + 3))
+                    logging.error("wrong date format in {}, {} row, {} cell. Must be dd.mm.yyyy (например 21.06.1990)".format(file_name, rownum, num + 3))
                     break
                 today_date = datetime.today().strftime("%m-%d")
                 if birthday == today_date:
@@ -111,7 +114,13 @@ def generate_email():
         birthday_name = birthday_boy[row_name]
         birthday_mail = birthday_boy[row_mail]
 
-        text_header = "Поздравляем тебя с днем рождения!" if birthday_boy[row_header] == "" else (birthday_boy[row_header] + ",")
+        header = birthday_name.split(' ')
+        try:
+            header = header[1] + " " + header[2] + ",\nС ДНЁМ РОЖДЕНИЯ!!"
+        except:
+            header = "С ДНЁМ РОЖДЕНИЯ!!"
+
+        text_header = header if birthday_boy[row_header] == "" else (birthday_boy[row_header] + ",")
         text_body = messages[randint(0, 1)] if birthday_boy[row_body] == "" else birthday_boy[row_body]
         
         birthday_data = [birthday_mail, birthday_name, text_header, text_body]
@@ -120,6 +129,7 @@ def generate_email():
     
         friends = [friends_mails, friends_names]
 
+        #print(birthday_data)
         mail_go_go(birthday_data, time_send, friends)
 
 
@@ -130,7 +140,6 @@ def open_outlook():
     os.chdir('C:/Program Files (x86)/Microsoft Office/Office16')
     print(os.getcwd())
     print(os.system('OUTLOOK.exe'))
-    print(1111)
     #subprocess.call(['OUTLOOK.exe'])
 
 
@@ -147,13 +156,18 @@ def start_process():
         generate_email()
     else:
         open_outlook()
-        print("Started")
         generate_email()
+    # прикрутить проверку что сообщение отправлено
+    # Как?
 
 
 alarm_time = "11:00"
 
-schedule.every().day.at(alarm_time).do(start_process)
+def reset_send_email_today():
+    print("hoodie-ho")
+
+schedule.every().day.at("19:09").do(start_process)
+schedule.every().day.at("19:10").do(reset_send_email_today)
 
 check_hour = alarm_time.split(':')[0]
 check_min = alarm_time.split(':')[1]
